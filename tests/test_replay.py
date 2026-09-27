@@ -102,6 +102,7 @@ def test_session_round_trip_preserves_world_dimensions(tmp_path):
 def test_legacy_npz_without_dimensions_loads_and_explicit_world_size_wraps(tmp_path):
     session = Session([make_record(i) for i in range(12)], horizon=8)
     path = tmp_path / "legacy.npz"
+    n = len(session.records)
     np.savez_compressed(
         path,
         t=np.asarray([r.t for r in session.records]),
