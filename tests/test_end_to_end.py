@@ -10,7 +10,11 @@ def test_all_observer_arms_score_identical_heldout_indices():
     frames = [world.frame(i) for i in range(500)]
     session = replay_frames(frames, seed=7, dt=1/30)
     result = evaluate_session(session, train_fraction=0.6, horizon=8)
-    expected = {"present", "window", "resident", "resident_reset", "resident_shuffle"}
+    expected = {
+        "present", "window", "resident", "resident_reset", "resident_shuffle",
+        "sequencing", "sequencing_event_shuffle", "sequencing_no_tuft",
+        "sequencing_no_route_closure",
+    }
     assert set(result.predictions) == expected
     n = len(result.test_indices)
     assert n > 0
