@@ -51,3 +51,68 @@ def test_short_session_rejected_for_targets():
     session = Session([make_record(i) for i in range(9)], horizon=8)
     with pytest.raises(ValueError, match="too short"):
         make_targets(session, horizon=8)
+
+
+def test_make_targets_wraps_toroidal_x_and_y():
+    features = VisibleFeatures(0.1, 0.0, 0.0, 0.0, 0.1)
+    hidden = HiddenFlyState(0.0, 0.0, 0.0)
+    records = []
+    for i in range(10):
+        visible = VisibleFlyState(638.0, 478.0, 0.0, 0.0, 0.0)
+        if i == 8:
+            visible = VisibleFlyState(3.0, 3.0, 0.0, 0.0, 0.0)
+        records.append(FrameRecord(i / 30, 1 / 30, visible, features, hidden))
+    session = Session(records, horizon=8, world_width=640, world_height=480)
+    _, y = make_targets(session, horizon=8)
+    assert y[0, 0] == pytest.approx(5.0)
+    assert y[0, 1] == pytest.approx(5.0)
+
+
+def test_make_targets_wraps_negative_direction():
+    features = VisibleFeatures(0.1, 0.0, 0.0, 0.0, 0.1)
+    hidden = HiddenFlyState(0.0, 0.0, 0.0)
+    records = []
+    for i in range(10):
+        visible = VisibleFlyState(2.0, 2.0, 0.0, 0.0, 0.0)
+        if i == 8:
+            visible = VisibleFlyState(637.0, 477.0, 0.0, 0.0, 0.0)
+        records.append(FrameRecord(i / 30, 1 / 30, visible, features, hidden))
+    session = Session(records, horizon=8, world_width=640, world_height=480)
+    _, y = make_targets(session, horizon=8)
+    assert y[0, 0] == pytest.approx(-5.0)
+    assert y[0, 1] == pytest.approx(-5.0)
+
+
+def test_make_targets_preserves_ordinary_displacement_with_geometry():
+    session = Session([make_record(i) for i in range(12)], horizon=8, world_width=640, world_height=480)
+    _, y = make_targets(session, horizon=8)
+    assert y[0, 0] == pytest.approx(8.0)
+    assert y[0, 1] == pytest.approx(16.0)
+
+
+def test_session_round_trip_preserves_world_dimensions(tmp_path):
+    session = Session([make_record(i) for i in range(12)], horizon=8, world_width=640, world_height=480)
+    path = tmp_path / "dims.npz"
+    session.save(path)
+    loaded = Session.load(path)
+    assert loaded.world_width == 640
+    assert loaded.world_height == 480
+
+
+def test_legacy_npz_without_dimensions_loads_and_explicit_world_size_wraps(tmp_path):
+    session = Session([make_record(i) for i in range(12)], horizon=8)
+    path = tmp_path / "legacy.npz"
+    np.savez_compressed(
+        path,
+        t=np.asarray([r.t for r in session.records]),
+        dt=np.asarray([r.dt for r in session.records]),
+        visible=np.stack([r.visible.as_array() for r in session.records]),
+        features=np.stack([r.features.as_array() for r in session.records]),
+        hidden=np.stack([r.hidden.as_array() for r in session.records]),
+        horizon=8,
+    )
+    loaded = Session.load(path)
+    assert loaded.world_width is None
+    assert loaded.world_height is None
+    _, y = make_targets(loaded, horizon=8, world_size=(640, 480))
+    assert y[0, 0] == pytest.approx(8.0)
