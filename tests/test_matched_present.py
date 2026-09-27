@@ -18,6 +18,7 @@ def test_matcher_finds_same_visible_present_with_different_hidden_history_withou
     records = [rec(i) for i in range(70)]
     records[5] = rec(5, x=42.0, hidden=0.9)
     records[45] = rec(45, x=42.0, hidden=-0.9)
+    # Divergent futures after the visually identical moments.
     for k in range(1, 9):
         records[5+k] = rec(5+k, x=42.0 + k, hidden=0.9)
         records[45+k] = rec(45+k, x=42.0 - k, hidden=-0.9)
@@ -37,6 +38,7 @@ def test_sequencing_audit_is_attached_only_after_visible_pair_selection():
     from smarfly2.observers.sequencing import SequencingFeatureBuilder
 
     records = [rec(i) for i in range(80)]
+    # Different earlier sensory histories, identical visible presents at 10 and 50.
     for k in range(0, 8):
         r = records[k]
         records[k] = FrameRecord(r.t, r.dt, r.visible,
