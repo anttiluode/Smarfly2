@@ -13,6 +13,7 @@ from .session import Session, make_targets
 
 @dataclass
 class EvaluationResult:
+    train_indices: np.ndarray
     test_indices: np.ndarray
     targets: np.ndarray
     predictions: dict[str, np.ndarray]
@@ -49,7 +50,10 @@ def evaluate_session(
     warmup = 11
     if split <= warmup or n - split < 2:
         raise ValueError("session too short after contiguous split and window warm-up")
-    train_pos = np.arange(warmup, split, dtype=int)
+    train_stop = split - horizon
+    if train_stop <= warmup:
+        raise ValueError("session too short to keep training targets out of held-out period")
+    train_pos = np.arange(warmup, train_stop, dtype=int)
     test_pos = np.arange(split, n, dtype=int)
 
     reset_mask = np.ones(n, dtype=bool)
@@ -73,6 +77,7 @@ def evaluate_session(
         }
 
     return EvaluationResult(
+        train_indices=indices[train_pos],
         test_indices=indices[test_pos],
         targets=truth,
         predictions=predictions,

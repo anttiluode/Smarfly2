@@ -1,24 +1,24 @@
 {
   "metrics": {
     "present": {
-      "angular_mae": 0.033108998728412234,
-      "endpoint_rmse": 102.7701136195221
+      "angular_mae": 0.03614368192965409,
+      "endpoint_rmse": 97.6443633586479
     },
     "resident": {
-      "angular_mae": 0.3119386826427834,
-      "endpoint_rmse": 632.876703748247
+      "angular_mae": 0.3193586662010524,
+      "endpoint_rmse": 834.7627655491351
     },
     "resident_reset": {
-      "angular_mae": 0.03474256902343567,
-      "endpoint_rmse": 104.26721490876798
+      "angular_mae": 0.037896021142455494,
+      "endpoint_rmse": 98.70903043720723
     },
     "resident_shuffle": {
-      "angular_mae": 0.03611362168373012,
-      "endpoint_rmse": 166.6282870056204
+      "angular_mae": 0.03885520478289058,
+      "endpoint_rmse": 209.1564406922006
     },
     "window": {
-      "angular_mae": 0.02950408126501547,
-      "endpoint_rmse": 186.81211828464345
+      "angular_mae": 0.03302615747360717,
+      "endpoint_rmse": 166.6204686585011
     }
   },
   "n_test": 317,

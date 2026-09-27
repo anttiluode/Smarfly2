@@ -20,3 +20,11 @@ def test_all_observer_arms_score_identical_heldout_indices():
         assert np.all(np.isfinite(pred))
         assert np.all(np.isfinite(list(result.metrics[name].values())))
     assert result.targets.shape == (n, 3)
+
+
+def test_training_targets_do_not_reach_into_heldout_period():
+    world = SyntheticWorld(120, 90, seed=3)
+    frames = [world.frame(i) for i in range(220)]
+    session = replay_frames(frames, seed=9, dt=1/30)
+    result = evaluate_session(session, train_fraction=0.6, horizon=8)
+    assert result.train_indices[-1] + 8 < result.test_indices[0]

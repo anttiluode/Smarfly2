@@ -19,24 +19,24 @@ v0 is implemented as an artificial-ethology observer bench rather than a smarter
 Full local suite:
 
 ```text
-25 passed
+26 passed
 ```
 
-Frozen headless smoke command (the build sandbox cannot reach PyPI, so this execution used `PYTHONPATH=src` rather than an editable install):
+Frozen headless smoke command. The build sandbox cannot reach PyPI under normal build isolation; packaging was separately verified with `pip install -e . --no-build-isolation --no-deps`, after which the exact command below was run:
 
 ```bash
-PYTHONPATH=src python scripts/fit_observers.py --synthetic 800 --seed 7 --out results/synthetic_v0.json
+python scripts/fit_observers.py --synthetic 800 --seed 7 --out results/synthetic_v0.json
 ```
 
 Held-out rows: **317**.
 
 | observer | endpoint RMSE | angular MAE |
 |---|---:|---:|
-| present | **102.7701** | 0.033109 |
-| window | 186.8121 | **0.029504** |
-| resident | 632.8767 | 0.311939 |
-| resident reset | 104.2672 | 0.034743 |
-| resident shuffle | 166.6283 | 0.036114 |
+| present | **97.6444** | 0.036144 |
+| window | 166.6205 | **0.033026** |
+| resident | 834.7628 | 0.319359 |
+| resident reset | 98.7090 | 0.037896 |
+| resident shuffle | 209.1564 | 0.038855 |
 
 These numbers are descriptive, not a scientific gate. On this deterministic synthetic fixture the resident representation is plainly not the best predictor: present-only has the lowest endpoint error and the explicit window has the lowest angular error. The result is intentionally kept rather than tuned away.
 
