@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 import numpy as np
 
@@ -14,6 +14,11 @@ class MatchedPair:
     visible_distance: float
     hidden_distance: float
     future_divergence: float
+    event_residue_distance: float | None = None
+    tuft_gain_distance: float | None = None
+    active_channel_i: int | None = None
+    active_channel_j: int | None = None
+    sequencing_prediction_divergence: float | None = None
 
 
 def _visible_vector(record) -> np.ndarray:
@@ -28,10 +33,20 @@ def _angle_delta(a: float, b: float) -> float:
     return (b - a + math.pi) % (2 * math.pi) - math.pi
 
 
+def _wrapped(delta: float, size: float | None) -> float:
+    if size is None:
+        return delta
+    return (delta + 0.5 * size) % size - 0.5 * size
+
+
 def _future_delta(session: Session, i: int, horizon: int) -> np.ndarray:
     a = session.records[i].visible
     b = session.records[i + horizon].visible
-    return np.asarray([b.x - a.x, b.y - a.y, _angle_delta(a.heading, b.heading)], dtype=float)
+    return np.asarray([
+        _wrapped(b.x - a.x, float(session.world_width) if session.world_width else None),
+        _wrapped(b.y - a.y, float(session.world_height) if session.world_height else None),
+        _angle_delta(a.heading, b.heading),
+    ], dtype=float)
 
 
 def find_matched_present_pairs(
@@ -41,6 +56,7 @@ def find_matched_present_pairs(
     temporal_separation: int = 30,
     horizon: int = 8,
 ) -> list[MatchedPair]:
+    """Select pairs using visible present only; audit data is appended elsewhere."""
     last = len(session.records) - horizon
     if last <= temporal_separation or max_pairs <= 0:
         return []
@@ -69,3 +85,28 @@ def find_matched_present_pairs(
         future_divergence = float(np.linalg.norm(_future_delta(session, i, horizon) - _future_delta(session, j, horizon)))
         out.append(MatchedPair(i, j, visible_distance, hidden_distance, future_divergence))
     return out
+
+
+def attach_sequencing_audit(
+    pairs: list[MatchedPair],
+    trace,
+    prediction_by_index: dict[int, np.ndarray] | None = None,
+) -> list[MatchedPair]:
+    """Attach sequencing diagnostics after visible-only pair selection."""
+    audited: list[MatchedPair] = []
+    for pair in pairs:
+        i, j = pair.i, pair.j
+        prediction_divergence = None
+        if prediction_by_index is not None and i in prediction_by_index and j in prediction_by_index:
+            prediction_divergence = float(
+                np.linalg.norm(np.asarray(prediction_by_index[i]) - np.asarray(prediction_by_index[j]))
+            )
+        audited.append(replace(
+            pair,
+            event_residue_distance=float(np.linalg.norm(trace.change_residue[i] - trace.change_residue[j])),
+            tuft_gain_distance=float(np.linalg.norm(trace.tuft_gain[i] - trace.tuft_gain[j])),
+            active_channel_i=int(trace.active_channel[i]),
+            active_channel_j=int(trace.active_channel[j]),
+            sequencing_prediction_divergence=prediction_divergence,
+        ))
+    return audited
