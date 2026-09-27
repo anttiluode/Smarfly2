@@ -38,4 +38,4 @@ def replay_frames(frames: Sequence[np.ndarray], seed: int, dt: float, horizon: i
         )
         fly.step(features, dt)
         previous = frame
-    return Session(records, horizon=horizon)
+    return Session(records, horizon=horizon, world_width=w, world_height=h)
