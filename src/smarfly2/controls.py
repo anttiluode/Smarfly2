@@ -14,37 +14,40 @@ def shuffle_history_preserve_present(
     slow_tau: float = 3.0,
     period_s: float = 0.8,
 ) -> np.ndarray:
-    """Build resident features with each row's prefix history permuted.
+    """Destroy temporal order while preserving each row's visible present.
 
-    The current visible row is never moved. ``seed=None`` is the unshuffled
-    reference path and is useful for matched-control tests.
+    ``seed=None`` returns the unshuffled reference. For a seeded control, the
+    persistent state is driven by a causal surrogate stream: at each row it
+    receives one randomly selected earlier visible sample. The current visible
+    row is then restored in the public portion of the feature vector. This
+    keeps the control O(n), avoids future leakage, and preserves its scientific
+    purpose: current evidence is identical while ordered history is destroyed.
     """
     X = np.asarray(X, dtype=float)
-    n = len(X)
+    if X.ndim != 2:
+        raise ValueError("X must be 2-D")
+    n, d = X.shape
     dts = np.asarray(dt, dtype=float)
     if dts.ndim == 0:
         dts = np.full(n, float(dts))
+    if dts.shape != (n,):
+        raise ValueError("dt must be scalar or length n")
     if seed is None:
         return resident_features(
             X, dts, fast_tau=fast_tau, slow_tau=slow_tau, period_s=period_s
         )
+    if n == 0:
+        return np.empty((0, d * 3 + 2), dtype=float)
     rng = np.random.default_rng(seed)
-    rows = []
-    for i in range(n):
-        if i == 0:
-            order = np.array([0], dtype=int)
-        else:
-            history = rng.permutation(i)
-            order = np.concatenate([history, [i]])
-        phi = resident_features(
-            X[order],
-            dts[order],
-            fast_tau=fast_tau,
-            slow_tau=slow_tau,
-            period_s=period_s,
-        )
-        rows.append(phi[-1])
-    return np.stack(rows) if rows else np.empty((0, X.shape[1] * 3 + 2))
+    surrogate = np.empty_like(X)
+    surrogate[0] = X[0]
+    for i in range(1, n):
+        surrogate[i] = X[int(rng.integers(0, i))]
+    out = resident_features(
+        surrogate, dts, fast_tau=fast_tau, slow_tau=slow_tau, period_s=period_s
+    )
+    out[:, :d] = X
+    return out
 
 
 def reset_history_at(
@@ -64,3 +67,23 @@ def reset_history_at(
         slow_tau=slow_tau,
         period_s=period_s,
     )
+
+
+def shuffle_events_preserve_present(events: np.ndarray, seed: int = 1729) -> np.ndarray:
+    """Destroy event order causally without moving the visible present.
+
+    Row zero remains the zero-origin event. At each later row, the surrogate
+    history event is sampled only from strictly earlier rows, so no future
+    event can leak into an earlier observer state. Present-visible features
+    and targets are supplied separately and are never moved.
+    """
+    events = np.asarray(events, dtype=float)
+    if events.ndim != 2:
+        raise ValueError("events must be 2-D")
+    out = events.copy()
+    if len(events) <= 1:
+        return out
+    rng = np.random.default_rng(seed)
+    for i in range(1, len(events)):
+        out[i] = events[int(rng.integers(0, i))]
+    return out
